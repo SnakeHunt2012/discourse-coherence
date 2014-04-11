@@ -2,9 +2,10 @@
 """
 USAGE:
 
---pass--
+python main.py xxx.grid
 
-This script --pass--
+This script return the average out-degree
+of the graph derived from the xxx.grid file.
 """
 
 import sys
@@ -61,7 +62,7 @@ def edge_weight_entity_sentence(grid, entity, sentence):
         weight = 2
     elif grid[entity].trace[sentence] == 'X':
         weight = 1
-    return weight # warning: this value shall be converted to other type with high precision if needed
+    return weight # warning: this value shall be converted to other type with high precision when needed
 
 def edge_weight_version_1(grid, frm, to):
     "compute edge weight between two sentences by method P_U"
@@ -91,7 +92,7 @@ def grid_to_graph(grid):
     # Version 1: the sentence "to" is the sentence later than "frm" just by one(adjacent to "frm")
     for i in range(num_of_sentences - 1):
         if connection_between_sentences(grid, i, i + 1):
-            tuples_frm_to_weights.append((i, i + 1, edge_weight_version_2(grid, i, i + 1)))
+            tuples_frm_to_weights.append((i, i + 1, edge_weight_version_3(grid, i, i + 1)))
     # Version 2: the sentence "to" is every sentence later than "frm"
     #for i in range(num_of_sentences - 1):
     #    for j in range(i + 1, num_of_sentences):
@@ -99,8 +100,27 @@ def grid_to_graph(grid):
     #            tuples_frm_to_weights.append((i, j, edge_weight_version_3(grid, i, j)))
     
     # debug: print all tuples
-    print tuples_frm_to_weights
-    return graph 
+    #print tuples_frm_to_weights
+
+    # add nodes
+    graph.add_nodes_from(range(num_of_sentences))
+
+    # add edges
+    graph.add_weighted_edges_from(tuples_frm_to_weights)
+    # debug: print adjacency matrix of graph
+    #print nx.adjacency_matrix(graph)
+
+    return graph
+
+def avg_out_degree(graph):
+    "compute average out degree(edge weight) for graph"
+    out_degree = 0
+    avg_out_degree = 0
+    graph_out_degree = graph.out_degree(weight = "weight")
+    for key in graph_out_degree.keys():
+        out_degree = out_degree + graph_out_degree[key]
+    avg_out_degree = float(out_degree) / graph.number_of_nodes()
+    return avg_out_degree
 
     
 class Entity(object):
@@ -112,7 +132,9 @@ class Entity(object):
 
 
 if __name__ == "__main__":
-    "---pass--"
-    # under construction
-    grid = grid_parse("./in.txt")
+    "---pass---"
+    args = sys.argv
+
+    grid = grid_parse(args[1])
     graph = grid_to_graph(grid)
+    print "%f" % avg_out_degree(graph) 
