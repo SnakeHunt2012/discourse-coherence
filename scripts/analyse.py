@@ -16,6 +16,7 @@ and return the Accuracy.
 
 import sys
 import re
+import itertools
 
 def parse_record_file(in_file):
     "parse a record file into permutation_list"
@@ -72,6 +73,104 @@ def parse_record_file(in_file):
 
     return permutation_list
 
+def compute_accuracy(permutation_list):
+    "compute accuracy for records from permutation_list"
+    permutation_groups = itertools.groupby(permutation_list,
+                               lambda permutation: permutation.discourse_id)
+    # debug: print permutation groups
+    #for discourse_id, permutation_group in permutation_groups:
+    #    print discourse_id
+    #    for permutation in permutation_group:
+    #        print permutation.permutation_id
+
+    record_list = []
+    
+    #  version 1: for each group, if the origin permutation has
+    #+ the highest average out-degree, then mark positive example
+    #for discourse_id, permutation_group in permutation_groups:
+    #    # debug: print discourse_id
+    #    #print discourse_id
+    #   max_permutation = permutation_group.next()
+    #    for permutation in permutation_group:
+    #        #debug: print permutation
+    #        #print permutation.permutation_id, permutation.avg_out_degree
+    #        if permutation.avg_out_degree > max_permutation.avg_out_degree:
+    #            max_permutation = permutation
+    #    # debug: print max_permutation.avg_out_degree
+    #    #print "max_permutation.avg_out_degree:", max_permutation.avg_out_degree
+    #    if max_permutation.permutation_id == 1:
+    #        record_list.append(int(1))
+    #        # debug: print access 
+    #        #print "Access!"
+    #    else:
+    #        record_list.append(int(0))
+    #        # debug: print fail
+    #        #print "Fail!"
+
+    #  version 2: for each permutation(except origin permutation),
+    #+ if the origin permutation has the higher(not equal) average
+    #+ out-degree, then mark positive example
+    for discourse_id, permutation_group in permutation_groups:
+        permutation_list = []
+        # debug: print discourse_id
+        #print discourse_id,
+        #  search for the origin permutation and record
+        #+ every permutation in to a list for cacheing
+        for permutation in permutation_group:
+            permutation_list.append(permutation)
+            if permutation.permutation_id == 1:
+                ori_permutation = permutation
+        # debug: print ori_permutation
+        #print "ori_permutation:", ori_permutation.permutation_id, ori_permutation.avg_out_degree
+        # compute item(positive or negative example) to record_list
+        for permutation in permutation_list:
+            if permutation.permutation_id == 1:
+                continue
+            #debug: print permutation
+            #print permutation.permutation_id, permutation.avg_out_degree,
+            if ori_permutation.avg_out_degree > permutation.avg_out_degree:
+                record_list.append(int(1))
+                # debug print positive result
+                #print "positive"
+            else:
+                record_list.append(int(0))
+                # debug print negative result
+                #print "negative"
+
+    #  version 3: for each permutation(except origin permutation),
+    #+ if the origin permutation has the higher or the same average
+    #+ out-degree, then mark positive example
+    #for discourse_id, permutation_group in permutation_groups:
+    #    permutation_list = []
+    #    # debug: print discourse_id
+    #    #print discourse_id,
+    #    #  search for the origin permutation and record
+    #    #+ every permutation in to a list for cacheing
+    #    for permutation in permutation_group:
+    #        permutation_list.append(permutation)
+    #        if permutation.permutation_id == 1:
+    #            ori_permutation = permutation
+    #    # debug: print ori_permutation
+    #    #print "ori_permutation:", ori_permutation.permutation_id, ori_permutation.avg_out_degree
+    #    # compute item(positive or negative example) to record_list
+    #    for permutation in permutation_list:
+    #        if permutation.permutation_id == 1:
+    #            continue
+    #        #debug: print permutation
+    #        #print permutation.permutation_id, permutation.avg_out_degree,
+    #        if ori_permutation.avg_out_degree >= permutation.avg_out_degree:
+    #            record_list.append(int(1))
+    #            # debug print positive result
+    #            #print "positive"
+    #        else:
+    #            record_list.append(int(0))
+    #            # debug print negative result
+    #            #print "negative"
+                
+    return float(sum(record_list)) / len(record_list)
+        
+
+    
 class Error(Exception):
     """ Base class for exceptions in this module."""
     pass
@@ -114,3 +213,6 @@ if __name__ == "__main__":
     #    print "avg_out_degree:\t", type(permutation.avg_out_degree), permutation.avg_out_degree
     #    print "---"
     #print "total:", len(permutation_list), "permutations."
+
+    accuracy = compute_accuracy(permutation_list)
+    print accuracy
