@@ -137,4 +137,4 @@ if __name__ == "__main__":
 
     grid = grid_parse(args[1])
     graph = grid_to_graph(grid)
-    print "%f" % avg_out_degree(graph) 
+    print "%f %d %d" % (avg_out_degree(graph), len(grid), len(grid[0].trace))

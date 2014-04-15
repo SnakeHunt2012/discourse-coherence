@@ -7,15 +7,10 @@ data1_test_dir="${work_dir}/../data/data1-test"
 data2_train_dir="${work_dir}/../data/data2-train"
 data2_test_dir="${work_dir}/../data/data2-test"
 
-data1_train_grid_list_file="${work_dir}/../result/data1_train_grid_file.list"
-data1_test_grid_list_file="${work_dir}/../result/data1_test_grid_file.list"
-data2_train_grid_list_file="${work_dir}/../result/data2_train_grid_file.list"
-data2_test_grid_list_file="${work_dir}/../result/data2_test_grid_file.list"
-
-#data1_train_grid_log_file="${work_dir}/data1_train_grid_file.log"
-#data1_test_grid_log_file="${work_dir}/data1_test_grid_file.log"
-#data2_train_grid_log_file="${work_dir}/data2_train_grid_file.log"
-#data2_test_grid_log_file="${work_dir}/data2_test_grid_file.log"
+data1_train_grid_list_file="${work_dir}/../result/data1-train.list"
+data1_test_grid_list_file="${work_dir}/../result/data1-test.list"
+data2_train_grid_list_file="${work_dir}/../result/data2-train.list"
+data2_test_grid_list_file="${work_dir}/../result/data2-test.list"
 
 # data1_train
 cd $data1_train_dir

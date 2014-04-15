@@ -9,20 +9,20 @@
 work_dir=$(pwd)
 result_dir="${work_dir}/../result"
 
-list_1="${result_dir}/data1_train_grid_file.list"
-list_2="${result_dir}/data1_test_grid_file.list"
-list_3="${result_dir}/data2_train_grid_file.list"
-list_4="${result_dir}/data2_test_grid_file.list"
+list_1="${result_dir}/data1-train.list"
+list_2="${result_dir}/data1-test.list"
+list_3="${result_dir}/data2-train.list"
+list_4="${result_dir}/data2-test.list"
 
-list_remove_1="${result_dir}/data1_train_grid_file_remove.list"
-list_remove_2="${result_dir}/data1_test_grid_file_remove.list"
-list_remove_3="${result_dir}/data2_train_grid_file_remove.list"
-list_remove_4="${result_dir}/data2_test_grid_file_remove.list"
+list_remove_1="${result_dir}/data1-train-remove.list"
+list_remove_2="${result_dir}/data1-test-remove.list"
+list_remove_3="${result_dir}/data2-train-remove.list"
+list_remove_4="${result_dir}/data2-test-remove.list"
 
-list_clean_1="${result_dir}/data1_train_grid_file_clean.list"
-list_clean_2="${result_dir}/data1_test_grid_file_clean.list"
-list_clean_3="${result_dir}/data2_train_grid_file_clean.list"
-list_clean_4="${result_dir}/data2_test_grid_file_clean.list"
+list_clean_1="${result_dir}/data1-train-clean.list"
+list_clean_2="${result_dir}/data1-test-clean.list"
+list_clean_3="${result_dir}/data2-train-clean.list"
+list_clean_4="${result_dir}/data2-test-clean.list"
 
 # data1_train - 1
 cat "$list_1" | \

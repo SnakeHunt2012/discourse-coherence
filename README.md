@@ -11,23 +11,23 @@ USAGE
 Generation Detail
 -------------------
 + scripts/script.sh 
-  * -> result/data1_train_grid_file.list
-  * -> result/data1_test_grid_file.list
-  * -> result/data2_train_grid_file.list
-  * -> result/data2_test_grid_file.list
+  * -> result/data1-train.list
+  * -> result/data1-test.list
+  * -> result/data2-train.list
+  * -> result/data2-test.list
 + scripts/clean.sh 
-  * -> result/data1_train_grid_file_remove.list
-  * -> result/data1_train_grid_file_clean.list
-  * -> result/data1_test_grid_file_remove.list
-  * -> result/data1_test_grid_file_clean.list
-  * -> result/data2_train_grid_file_remove.list
-  * -> result/data2_train_grid_file_clean.list
-  * -> result/data2_test_grid_file_remove.list
-  * -> result/data2_test_grid_file_clean.list
+  * -> result/data1-train-remove.list
+  * -> result/data1-train-clean.list
+  * -> result/data1-test-remove.list
+  * -> result/data1-test-clean.list
+  * -> result/data2-train-remove.list
+  * -> result/data2-train-clean.list
+  * -> result/data2-test-remove.list
+  * -> result/data2-test-clean.list
 + scripts/analyse 
-  * -> result/data1_whole.list
-  * -> result/data2_whole.list
-  * -> result/data_whole.list
+  * -> result/data1-whole.list
+  * -> result/data2-whole.list
+  * -> result/data-whole.list
 
 Invoking Detail
 -------------------

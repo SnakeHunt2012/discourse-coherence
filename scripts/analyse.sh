@@ -15,14 +15,21 @@
 work_dir=$(pwd)
 result_dir="${work_dir}/../result"
 
-list_clean_1="${result_dir}/data1_train_grid_file_clean.list"
-list_clean_2="${result_dir}/data1_test_grid_file_clean.list"
-list_clean_3="${result_dir}/data2_train_grid_file_clean.list"
-list_clean_4="${result_dir}/data2_test_grid_file_clean.list"
+list_clean_1="${result_dir}/data1-train-clean.list"
+list_clean_2="${result_dir}/data1-test-clean.list"
+list_clean_3="${result_dir}/data2-train-clean.list"
+list_clean_4="${result_dir}/data2-test-clean.list"
 
-list_data1="${result_dir}/data1_whole.list"
-list_data2="${result_dir}/data2_whole.list"
-list_data_whole="${result_dir}/data_whole.list"
+list_data1="${result_dir}/data1-whole.list"
+list_data2="${result_dir}/data2-whole.list"
+list_data_whole="${result_dir}/data-whole.list"
+
+csv_permutation_data1="${result_dir}/data1-permutation.csv"
+csv_permutation_data2="${result_dir}/data2-permutation.csv"
+csv_entity_data1="${result_dir}/data1-entity-accuracy.csv"
+csv_entity_data2="${result_dir}/data2-entity-accuracy.csv"
+csv_sentence_data1="${result_dir}/data1-sentence-accuracy.csv"
+csv_sentence_data2="${result_dir}/data2-sentence-accuracy.csv"
 
 : > "$list_data1"
 : > "$list_data2"
@@ -43,10 +50,31 @@ cat "$list_clean_3" >> "$list_data_whole"
 cat "$list_clean_4" >> "$list_data_whole"
 
 # print result
-echo "Accuracy at data1_train: $(python ${work_dir}/analyse.py ${list_clean_1})"
-echo "Accuracy at data1_test: $(python ${work_dir}/analyse.py ${list_clean_2})"
-echo "Accuracy at data2_train: $(python ${work_dir}/analyse.py ${list_clean_3})"
-echo "Accuracy at data2_test: $(python ${work_dir}/analyse.py ${list_clean_4})"
-echo "Accuracy at data set 1: $(python ${work_dir}/analyse.py ${list_data1})"
-echo "Accuracy at data set 2: $(python ${work_dir}/analyse.py ${list_data2})"
-echo "Accuracy at whole data: $(python ${work_dir}/analyse.py ${list_data_whole})"
+echo "Accuracy at data1_train: $(python ${work_dir}/analyse.py -a ${list_clean_1})"
+echo "Accuracy at data1_test: $(python ${work_dir}/analyse.py -a ${list_clean_2})"
+echo "Accuracy at data2_train: $(python ${work_dir}/analyse.py -a ${list_clean_3})"
+echo "Accuracy at data2_test: $(python ${work_dir}/analyse.py -a ${list_clean_4})"
+echo "Accuracy at data set 1: $(python ${work_dir}/analyse.py -a ${list_data1})"
+echo "Accuracy at data set 2: $(python ${work_dir}/analyse.py -a ${list_data2})"
+echo "Accuracy at whole data: $(python ${work_dir}/analyse.py -a ${list_data_whole})"
+
+# prepare data for R script
+: > $csv_permutation_data1
+: > $csv_permutation_data2
+: > $csv_entity_data1
+: > $csv_entity_data2
+: > $csv_sentence_data1
+: > $csv_sentence_data2
+
+python ${work_dir}/analyse.py --permutation-for-hist-gram ${list_data1} > \
+    $csv_permutation_data1
+python ${work_dir}/analyse.py --permutation-for-hist-gram ${list_data2} > \
+    $csv_permutation_data2
+python ${work_dir}/analyse.py --result-by-entity-amount ${list_data1} > \
+    $csv_entity_data1
+python ${work_dir}/analyse.py --result-by-entity-amount ${list_data2} > \
+    $csv_entity_data2
+python ${work_dir}/analyse.py --result-by-sentence-amount ${list_data1} > \
+    $csv_sentence_data1
+python ${work_dir}/analyse.py --result-by-sentence-amount ${list_data2} > \
+    $csv_sentence_data2
