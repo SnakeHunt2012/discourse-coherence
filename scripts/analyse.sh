@@ -13,23 +13,25 @@
 # 7. Accuracy at whole data (data1_train + data1_test + data2_train + data2_test)
 
 work_dir=$(pwd)
-result_dir="${work_dir}/../result"
+clean_dir="${work_dir}/../result/clean-data"
+analyse_dir="${work_dir}/../result/analyse-data"
+csv_dir="${work_dir}/../csv"
 
-list_clean_1="${result_dir}/data1-train-clean.list"
-list_clean_2="${result_dir}/data1-test-clean.list"
-list_clean_3="${result_dir}/data2-train-clean.list"
-list_clean_4="${result_dir}/data2-test-clean.list"
+list_clean_1="${clean_dir}/data1-train-clean.list"
+list_clean_2="${clean_dir}/data1-test-clean.list"
+list_clean_3="${clean_dir}/data2-train-clean.list"
+list_clean_4="${clean_dir}/data2-test-clean.list"
 
-list_data1="${result_dir}/data1-whole.list"
-list_data2="${result_dir}/data2-whole.list"
-list_data_whole="${result_dir}/data-whole.list"
+list_data1="${clean_dir}/data1-whole.list"
+list_data2="${clean_dir}/data2-whole.list"
+list_data_whole="${clean_dir}/data-whole.list"
 
-csv_permutation_data1="${result_dir}/data1-permutation.csv"
-csv_permutation_data2="${result_dir}/data2-permutation.csv"
-csv_entity_data1="${result_dir}/data1-entity-accuracy.csv"
-csv_entity_data2="${result_dir}/data2-entity-accuracy.csv"
-csv_sentence_data1="${result_dir}/data1-sentence-accuracy.csv"
-csv_sentence_data2="${result_dir}/data2-sentence-accuracy.csv"
+csv_permutation_data1="${csv_dir}/data1-permutation.csv"
+csv_permutation_data2="${csv_dir}/data2-permutation.csv"
+csv_entity_data1="${csv_dir}/data1-entity-accuracy.csv"
+csv_entity_data2="${csv_dir}/data2-entity-accuracy.csv"
+csv_sentence_data1="${csv_dir}/data1-sentence-accuracy.csv"
+csv_sentence_data2="${csv_dir}/data2-sentence-accuracy.csv"
 
 : > "$list_data1"
 : > "$list_data2"
@@ -78,3 +80,6 @@ python ${work_dir}/analyse.py --result-by-sentence-amount ${list_data1} > \
     $csv_sentence_data1
 python ${work_dir}/analyse.py --result-by-sentence-amount ${list_data2} > \
     $csv_sentence_data2
+
+# draw pictures
+R CMD BATCH --vanilla -slave analyse.R 

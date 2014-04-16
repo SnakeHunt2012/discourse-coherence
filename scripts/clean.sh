@@ -7,22 +7,23 @@
 #+ original document name from data[(1)|(2)]_[(train)|(test)]_grid_file.list
 
 work_dir=$(pwd)
-result_dir="${work_dir}/../result"
+raw_dir="${work_dir}/../result/raw-data"
+clean_dir="${work_dir}/../result/clean-data"
 
-list_1="${result_dir}/data1-train.list"
-list_2="${result_dir}/data1-test.list"
-list_3="${result_dir}/data2-train.list"
-list_4="${result_dir}/data2-test.list"
+list_1="${raw_dir}/data1-train.list"
+list_2="${raw_dir}/data1-test.list"
+list_3="${raw_dir}/data2-train.list"
+list_4="${raw_dir}/data2-test.list"
 
-list_remove_1="${result_dir}/data1-train-remove.list"
-list_remove_2="${result_dir}/data1-test-remove.list"
-list_remove_3="${result_dir}/data2-train-remove.list"
-list_remove_4="${result_dir}/data2-test-remove.list"
+list_remove_1="${clean_dir}/data1-train-remove.list"
+list_remove_2="${clean_dir}/data1-test-remove.list"
+list_remove_3="${clean_dir}/data2-train-remove.list"
+list_remove_4="${clean_dir}/data2-test-remove.list"
 
-list_clean_1="${result_dir}/data1-train-clean.list"
-list_clean_2="${result_dir}/data1-test-clean.list"
-list_clean_3="${result_dir}/data2-train-clean.list"
-list_clean_4="${result_dir}/data2-test-clean.list"
+list_clean_1="${clean_dir}/data1-train-clean.list"
+list_clean_2="${clean_dir}/data1-test-clean.list"
+list_clean_3="${clean_dir}/data2-train-clean.list"
+list_clean_4="${clean_dir}/data2-test-clean.list"
 
 # data1_train - 1
 cat "$list_1" | \

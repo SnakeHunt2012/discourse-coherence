@@ -92,7 +92,7 @@ def grid_to_graph(grid):
     # Version 1: the sentence "to" is the sentence later than "frm" just by one(adjacent to "frm")
     for i in range(num_of_sentences - 1):
         if connection_between_sentences(grid, i, i + 1):
-            tuples_frm_to_weights.append((i, i + 1, edge_weight_version_3(grid, i, i + 1)))
+            tuples_frm_to_weights.append((i, i + 1, edge_weight_version_1(grid, i, i + 1)))
     # Version 2: the sentence "to" is every sentence later than "frm"
     #for i in range(num_of_sentences - 1):
     #    for j in range(i + 1, num_of_sentences):

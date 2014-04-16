@@ -2,15 +2,16 @@
 # script.sh
 
 work_dir=$(pwd)
+raw_dir="${work_dir}/../result/raw-data"
 data1_train_dir="${work_dir}/../data/data1-train"
 data1_test_dir="${work_dir}/../data/data1-test"
 data2_train_dir="${work_dir}/../data/data2-train"
 data2_test_dir="${work_dir}/../data/data2-test"
 
-data1_train_grid_list_file="${work_dir}/../result/data1-train.list"
-data1_test_grid_list_file="${work_dir}/../result/data1-test.list"
-data2_train_grid_list_file="${work_dir}/../result/data2-train.list"
-data2_test_grid_list_file="${work_dir}/../result/data2-test.list"
+data1_train_grid_list_file="${raw_dir}/data1-train.list"
+data1_test_grid_list_file="${raw_dir}/data1-test.list"
+data2_train_grid_list_file="${raw_dir}/data2-train.list"
+data2_test_grid_list_file="${raw_dir}/data2-test.list"
 
 # data1_train
 cd $data1_train_dir
