@@ -159,3 +159,37 @@ Functions Invoking Detail
   + count_discourse_by_entity_amount()
   + count_discourse_by_sentence_amount()
   
+Class Detail(in grid.py)
+-------------------
++ class Discourse
+  * identity
+  * sentence_amount
+  * sentence_list -> class Sentence
++ class Sentence
+  * token_amount
+  * token_list -> class Token
++ class Token
+  * word_itself
+  * part_of_speech
+  * phrase_bit
+  * resolute_op rator_list-> class Resolute_Operator
+
+ +-----------------+
+ | Discourse       |
+ +-----------------+
+ | identity        |
+ | sentence_amount |	  +--------------+
+ | sentence_list   |----> | Sentence     |
+ +-----------------+	  +--------------+
+			  | token_amount |	+------------------------+
+			  | token_list   |----> | Token                  |
+			  +--------------+	+------------------------+
+						| word_itself            |
+						| part_of_speech         |
+						| phrase_bit             |	+-------------------+
+						| resolute_operator_list |----> | Resolute_Operator |
+						+------------------------+	+-------------------+
+										| identity          |
+										| operation         |
+										+-------------------+
+
