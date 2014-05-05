@@ -145,6 +145,7 @@ class Token(object):
                  part_of_speech, phrase_bit,
                  coreference_operator_list):
         self.word_itself = word_itself # shall be a string, e.g. "the"
+        self.syntactic_role = 'X' # shall be a character, which is one of {'S', 'O', 'X'}
         self.part_of_speech = part_of_speech # shall be a string, e.g. "NR"
         self.phrase_bit = phrase_bit # shall be a string, e.g. "(TOP(IP(NP(NP*"
         self.resolute_operator_list = coreference_operator_list # shall be an list of Resolute_Operator object
