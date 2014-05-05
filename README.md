@@ -165,14 +165,31 @@ Class Detail(in grid.py)
   * identity
   * sentence_amount
   * sentence_list -> class Sentence
+  + parse_mention()
+    * input: self
+    * output: the list of all mentions in this discourse
 + class Sentence
   * token_amount
   * token_list -> class Token
+  * mention_amount
+  * mention_list -> class Mention
+  + extract_mention()
+    extract mentions in this sentence and register them into Sentence.mention_list as well as the Sentence.mention_amount corresponding 
+    * input: self
+    * output: self
++ class Mention
+  * entity_identity
+  * sentence_index
+  * token_index_begin
+  * token_index_end
 + class Token
   * word_itself
   * part_of_speech
   * phrase_bit
   * resolute_op rator_list-> class Resolute_Operator
++ class Resolute_Operator
+  * identity
+  * operation
 
  +-----------------+
  | Discourse       |

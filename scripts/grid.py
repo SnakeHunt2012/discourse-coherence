@@ -22,6 +22,38 @@ class Discourse(object):
         self.identity = identity # shall be a string, e.g. "chtb_0001.v4"`
         self.sentence_amount = sentence_amount # shall be an integer
         self.sentence_list = sentence_list # shall be a list of Sentence object
+        #self.entity_amount = 0 # entity amount of this discourse
+        #self.entity_list = [] # entity_list of this discourse
+
+    def extract_mention(self):
+        '''
+        extract all mmentions from all sentences
+        and return a list containing all mentions
+        appeared in this discourse
+        '''
+        mention_list = []
+        for sentence in self.sentence_list:
+            sentence.parse_mention()
+            mention_list.extend(sentence.mention_list)
+            
+        # debug: print all mention in this discourse
+        mention_index = 0
+        for mention in mention_list:
+            print "mention %d:\t%d\t" % (mention_index, mention.entity_identity),
+            index_begin = mention.token_index_begin
+            index_end = mention.token_index_end
+            sentence_index = mention.sentence_index
+            token_list = self.sentence_list[sentence_index].token_list[index_begin:index_end]
+            for token in token_list:
+                print token.word_itself,
+            mention_index = mention_index + 1
+            print
+        
+        return mention_list
+
+    def group_mention():
+        "under construction"
+        pass
 
 class Sentence(object):
     '''
@@ -30,9 +62,75 @@ class Sentence(object):
     is a serial of lines without any empty lines interupting them,
     and of course two sentences are separated by an empty lines between them
     '''
-    def __init__(self, token_amount, token_list):
+    def __init__(self, index, token_amount, token_list):
+        self.index = index # shall be an integer which assign the index of this sentence in the discourse
         self.token_amount = token_amount # shall be an integer
         self.token_list = token_list # shall be a list of Token object
+        self.mention_amount = 0 # mention amount of this sentence
+        self.mention_list = [] # mention_list of this sentence
+
+    def parse_mention(self):
+        '''
+        parse all metnions in this sentence
+        into mention_amount and mention_list
+        '''
+        mention_amount = 0
+        mention_list = []
+        mention_stack = []
+
+        token_index = 0
+        for token in self.token_list:
+            # extract mentions from this sentence
+            for mention in mention_stack:
+                mention.token_index_end = mention.token_index_end + 1
+                
+            for operator in token.resolute_operator_list:
+                if operator.operation == 0:
+                    # this token is the begin of a new mention
+                    identity = operator.identity
+                    mention_new = Mention(identity,
+                                          self.index,
+                                          token_index,
+                                          token_index + 1)
+                    mention_stack.append(mention_new)
+                elif operator.operation == 1:
+                    # this token is the ending of the mention at the top of the mention_stack
+                    # Todo:
+                    # 1. parse identity
+                    # 2. find the mention with the same identity in the mention_stack backwards
+                    # 3. mention_list <- mention_stack.pop(remove_index)
+                    # 4. mention_amount++
+
+                    # 1. parse identity
+                    identity = operator.identity
+
+                    # 2. find the mention with the same identity in the mention_stack backwards
+                    remove_index = len(mention_stack) - 1
+                    for remove_index in range(remove_index - 1, -1, -1):
+                        if mention_stack[remove_index].entity_identity == identity:
+                            break
+
+                    # 3. mention_list <- mention_stack.pop(remove_index)
+                    mention_list.append(mention_stack.pop(remove_index))
+
+                    # 4. mention_amount++
+                    mention_amount = mention_amount + 1
+
+                else:
+                    # this token is a single mention itself
+                    identity = operator.identity
+                    mention_new = Mention(identity,
+                                          self.index,
+                                          token_index,
+                                          token_index + 1)
+                    mention_list.append(mention_new)
+                    mention_amount = mention_amount + 1
+                
+            token_index = token_index + 1
+            
+        self.mention_amount = mention_amount
+        self.mention_list = mention_list
+            
 
 class Token(object):
     '''
@@ -72,6 +170,26 @@ class Resolute_Operator(object):
         # 2 - this is a single mention of xx, such as `(8)`
         self.operation = operation
 
+class Entity(object):
+    '''
+    Class Entity
+    '''
+    def __init__(self, identity, mention_list):
+        self.identity = identity # shall be an integer
+        self.mention_list = mention_list # shall be a list of mention object
+
+class Mention(object):
+    '''
+    Class Mention
+    '''
+    def __init__(self, entity_identity,
+                 sentence_index,
+                 token_index_begin,
+                 token_index_end):
+        self.entity_identity = entity_identity # shall be an integer
+        self.sentence_index = sentence_index # shall be an integer as the index to a sentence list of this Discourse
+        self.token_index_begin = token_index_begin # shall be an integer as the index to a token list of the sentence indexed by the sentence_index in the previous line
+        self.token_index_end = token_index_end # shall be an integer as the index to a token list of the sentence indexed by the sentence_index in the previous line
 
 def parse_conll(file_in):
     '''
@@ -100,6 +218,7 @@ def parse_conll(file_in):
     state = 0
     type_line = 0
     count_line = 0
+    sentence_index = 0
     re_identity = re.compile(r"(?<=document \()\S+(?=\);)")
     for line in lines:
         type_line = determin_type(line)
@@ -134,7 +253,8 @@ def parse_conll(file_in):
                 # 1. parse token
                 token = parse_line(line)
                 # 2. new sentence
-                sentence_new = Sentence(0, [])
+                sentence_new = Sentence(sentence_index , 0, [])
+                sentence_index = sentence_index + 1
                 # 3. sentence <- token
                 sentence_new.token_amount = sentence_new.token_amount + 1
                 sentence_new.token_list.append(token)
@@ -359,6 +479,24 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     discourse_list = parse_conll(args.conll_file)
+
+    # debug: print mentions of a sentence for testing function parse_mention()
+    #sentence_sample = discourse_list[0].sentence_list[8]
+    #sentence_sample.parse_mention()
+    #mention_index = 0
+    #for mention in sentence_sample.mention_list:
+    #    print "mention %d:\t%d\t" % (mention_index, mention.entity_identity),
+    #    index_begin = mention.token_index_begin
+    #    index_end = mention.token_index_end
+    #    token_list = sentence_sample.token_list[index_begin:index_end]
+    #    for token in token_list:
+    #        print token.word_itself,
+    #    mention_index = mention_index + 1
+    #    print
+    #print "mention amount: %d" % (sentence_sample.mention_amount)
+
+    # debug: print all mention in a discourse
+    discourse_list[0].extract_mention()
 
     # debug: print discourse_list
     #for discourse in discourse_list:
