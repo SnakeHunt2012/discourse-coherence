@@ -23,8 +23,8 @@ class Discourse(object):
         self.identity = identity # shall be a string, e.g. "chtb_0001.v4"`
         self.sentence_amount = sentence_amount # shall be an integer
         self.sentence_list = sentence_list # shall be a list of Sentence object
-        #self.entity_amount = 0 # entity amount of this discourse
-        #self.entity_list = [] # entity_list of this discourse
+        self.entity_amount = 0 # entity amount of this discourse
+        self.entity_list = [] # entity_list of this discourse
 
     def extract_mention(self):
         '''
@@ -52,7 +52,7 @@ class Discourse(object):
         
         return mention_list
 
-    def group_mention(self, mention_list):
+    def group_mention(self):
         '''
         group mentions into mention_group based
         on their entity_identity, return the
@@ -60,6 +60,7 @@ class Discourse(object):
         Note: the return value mention_group is
         a list of list of mentions.
         '''
+        mention_list = self.extract_mention()
         mention_list = sorted(mention_list,
                               key = lambda mention: mention.entity_identity)
         mention_groups = itertools.groupby(mention_list,
@@ -69,8 +70,11 @@ class Discourse(object):
             mention_list = []
             for mention in mention_group:
                 mention_list.append(mention)
-            entity_list.append(mention_list) # thus, entity_list[][] is a list of list of mentions
-        return entity_list
+            entity = Entity(len(mention_list), mention_list)
+            entity_list.append(entity)
+
+        self.entity_list = entity_list
+        self.entity_amount = len(entity_list)
 
 class Sentence(object):
     '''
@@ -495,51 +499,28 @@ if __name__ == "__main__":
     group.add_argument("-p", "--np-noun", action = "store_true",
                        help = "use coreferenced resoluted (nouns and NPs) as the entities, i.e. resoluted( resoluted({nouns}) + resoluted({NPs}) )")
 
+    # parse conll and generate discourses(discourse_list[])
     args = parser.parse_args()
     discourse_list = parse_conll(args.conll_file)
+    for discourse in discourse_list:
+        discourse.group_mention()
 
-
-    # debug: print discourse_list
-    #for discourse in discourse_list:
-    #    count_sentence = 0
-    #    for sentence in discourse.sentence_list:
-    #        print "sentence %d\t" % (count_sentence),
-    #        for token in sentence.token_list:
-    #            print token.word_itself,
-    #        count_sentence = count_sentence + 1
-    #        print 
-
-    # debug: print mentions of a sentence for testing function parse_mention()
-    #sentence_sample = discourse_list[0].sentence_list[9]
-    #sentence_sample.parse_mention()
-    #mention_index = 0
-    #for mention in sentence_sample.mention_list:
-    #    print "mention %d:\t%d\t" % (mention_index, mention.entity_identity),
-    #    index_begin = mention.token_index_begin
-    #    index_end = mention.token_index_end
-    #    token_list = sentence_sample.token_list[index_begin:index_end]
-    #    for token in token_list:
-    #        print token.word_itself,
-    #    mention_index = mention_index + 1
-    #    print
-    #print "mention amount: %d" % (sentence_sample.mention_amount)
-    
-    # debug: print all entity group in a discourse
-    #entity_group = discourse_list[0].group_mention(discourse_list[0].extract_mention())
+    # debug: print all entity and its mentions in the discourse
+    #discourse = discourse_list[0]
     #entity_index = 0
-    #for entity in entity_group:
-    #    print "entity: %d -----------------------" % entity_index 
+    #for entity in discourse.entity_list:
+    #    print "entity %d -----------------------" % entity_index
     #    mention_index = 0
-    #    for mention in entity:
-    #        print "mention: %d\t%d\t" % (mention_index, mention.entity_identity),
+    #    for mention in entity.mention_list:
+    #        print "    mention %d\t%d\t" % (mention_index, mention.entity_identity),
     #        index_begin = mention.token_index_begin
     #        index_end = mention.token_index_end
-    #        sentence = discourse_list[0].sentence_list[mention.sentence_index]
+    #        sentence = discourse.sentence_list[mention.sentence_index]
     #        token_list = sentence.token_list[index_begin:index_end]
     #        for token in token_list:
     #            print token.word_itself,
-    #        mention_index = mention_index + 1
     #        print
+    #        mention_index = mention_index + 1
     #    entity_index = entity_index + 1
 
     if args.all_noun:
