@@ -23,8 +23,87 @@ class Discourse(object):
         self.identity = identity # shall be a string, e.g. "chtb_0001.v4"`
         self.sentence_amount = sentence_amount # shall be an integer
         self.sentence_list = sentence_list # shall be a list of Sentence object
+        
         self.entity_amount = 0 # entity amount of this discourse
         self.entity_list = [] # entity_list of this discourse
+        self.noun_amount = 0 # amount of entities without coreference in this discourse
+        self.noun_list = [] # list of entities without coreference in this discourse
+
+    def group_noun(self):
+        '''
+        extract all entity other than entity with mention
+        and generate noun_list as well as nount_amount
+        Note: each noun is an Entity object
+        '''
+        noun_amount = 0
+        noun_list = []
+
+        sentence_index = 0
+        for sentence in self.sentence_list:
+            token_index = 0
+            for token in sentence.token_list:
+                # entity_flag
+                entity_flag = 0
+                if token.part_of_speech == "NN":
+                    entity_flag = 1
+                if token.part_of_speech == "NR":
+                    entity_flag = 1
+                for operator in token.resolute_operator_list:
+                    if operator.operation == 2:
+                        entity_flat = 0
+                        break
+                # register or record
+                if entity_flag == 0:
+                    # if this token is not an entity noun:
+                    token_index = token_index + 1
+                    continue
+                else:
+                    # if this token is an entity noun:
+                    search_flag = 0
+                    for noun in noun_list:
+                        if token.word_itself == noun.identity:
+                            search_flag = 1
+                            # record this token into the noun
+                            mention_new = Mention(token.word_itself,
+                                                  sentence_index,
+                                                  token_index,
+                                                  token_index + 1)
+                            noun.mention_list.append(mention_new)
+                            break
+                    if search_flag == 0:
+                        # register this token as a new noun
+                        mention_list = []
+                        mention_new = Mention(token.word_itself,
+                                              sentence_index,
+                                              token_index,
+                                              token_index + 1)
+                        mention_list.append(mention_new)
+                        entity_new = Entity(token.word_itself, mention_list)
+                        noun_list.append(entity_new)
+                        noun_amount = noun_amount + 1
+                        
+                    token_index = token_index + 1
+            sentence_index = sentence_index + 1
+
+        self.noun_amount = noun_amount
+        self.noun_list = noun_list
+
+        # debug: print all noun in noun_list
+        #noun_index = 0
+        #for noun in noun_list:
+        #    print "noun %d %s -----------------------" % (noun_index, noun.identity)
+        #    mention_index = 0
+        #    for mention in noun.mention_list:
+        #        sentence = self.sentence_list[mention.sentence_index]
+        #        index_begin = mention.token_index_begin
+        #        index_end = mention.token_index_end
+        #        token_list = sentence.token_list[index_begin:index_end]
+        #        print "mention %d %d:\t" % (mention.sentence_index, index_begin),
+        #        for token in token_list:
+        #            print token.word_itself,
+        #        print
+        #        mention_index = mention_index + 1
+        #    noun_index = noun_index + 1
 
     def extract_mention(self):
         '''
@@ -70,11 +149,57 @@ class Discourse(object):
             mention_list = []
             for mention in mention_group:
                 mention_list.append(mention)
-            entity = Entity(len(mention_list), mention_list)
+            entity = Entity(mention_list[0].entity_identity, mention_list)
             entity_list.append(entity)
 
         self.entity_list = entity_list
         self.entity_amount = len(entity_list)
+
+    def print_grid(self):
+        '''
+        generate and print grid for this discourse
+        '''
+        for noun in self.noun_list:
+            print noun.identity,
+            sentence_index = 0
+            for sentence_index in range(self.sentence_amount):
+                record = '-'
+                for mention in noun.mention_list:
+                    if mention.sentence_index == sentence_index:
+                        record = 'X'
+                print record,
+            print
+
+        for entity in self.entity_list:
+            print "(%d)" % entity.identity,
+            sentence_index = 0
+            for sentence_index in range(self.sentence_amount):
+                record = '-'
+                for mention in entity.mention_list:
+                    if mention.sentence_index == sentence_index:
+                        record = 'X'
+                print record,
+            print
+
+        # debug: comment for myzhang 
+        print "------------------------------ 残忍的分割线 ------------------------------"
+        print 
+        print "在上面的表格中，以数字为标注的实体都是共指实体，这些实体的每次mention我在下面给您列出:"
+        print
+        print "------------------------------ 残忍的分割线 ------------------------------"
+        for entity in discourse.entity_list:
+            print "entity (%d) -----------------------" % entity.identity
+            mention_index = 0
+            for mention in entity.mention_list:
+                print "    mention %d\t%d\t" % (mention_index, mention.entity_identity),
+                index_begin = mention.token_index_begin
+                index_end = mention.token_index_end
+                sentence = self.sentence_list[mention.sentence_index]
+                token_list = sentence.token_list[index_begin:index_end]
+                for token in token_list:
+                    print token.word_itself,
+                print
+                mention_index = mention_index + 1
 
 class Sentence(object):
     '''
@@ -197,7 +322,7 @@ class Entity(object):
     Class Entity
     '''
     def __init__(self, identity, mention_list):
-        self.identity = identity # shall be an integer
+        self.identity = identity # shall be an integer or word_itself
         self.mention_list = mention_list # shall be a list of mention object
 
 class Mention(object):
@@ -208,10 +333,12 @@ class Mention(object):
                  sentence_index,
                  token_index_begin,
                  token_index_end):
-        self.entity_identity = entity_identity # shall be an integer
+        self.entity_identity = entity_identity # shall be an integer or word_itself
         self.sentence_index = sentence_index # shall be an integer as the index to a sentence list of this Discourse
         self.token_index_begin = token_index_begin # shall be an integer as the index to a token list of the sentence indexed by the sentence_index in the previous line
         self.token_index_end = token_index_end # shall be an integer as the index to a token list of the sentence indexed by the sentence_index in the previous line
+
+
 
 def parse_conll(file_in):
     '''
@@ -509,7 +636,7 @@ if __name__ == "__main__":
     #discourse = discourse_list[0]
     #entity_index = 0
     #for entity in discourse.entity_list:
-    #    print "entity %d -----------------------" % entity_index
+    #    print "entity %d -----------------------" % entity.identity
     #    mention_index = 0
     #    for mention in entity.mention_list:
     #        print "    mention %d\t%d\t" % (mention_index, mention.entity_identity),
@@ -522,6 +649,10 @@ if __name__ == "__main__":
     #        print
     #        mention_index = mention_index + 1
     #    entity_index = entity_index + 1
+
+    for discourse in discourse_list:
+        discourse.group_noun()
+        discourse.print_grid()
 
     if args.all_noun:
         pass
