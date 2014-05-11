@@ -13,6 +13,8 @@ import sys
 import argparse
 import re
 import itertools
+import copy
+import random
 
 class Discourse(object):
     '''
@@ -28,6 +30,8 @@ class Discourse(object):
         self.entity_list = [] # entity_list of this discourse
         self.noun_amount = 0 # amount of entities without coreference in this discourse
         self.noun_list = [] # list of entities without coreference in this discourse
+        self.original_grid = [] # matrix (list of list of char)
+        self.shuffle_grid_list = [] # matrix (list of list of list of char)
 
     def group_noun(self):
         '''
@@ -155,51 +159,97 @@ class Discourse(object):
         self.entity_list = entity_list
         self.entity_amount = len(entity_list)
 
+    def generate_grid(self):
+        '''
+        generate grid for this discourse in to member variable original_grid
+        '''
+        original_grid = []
+
+        # some tric here
+        # I just want nouns appear
+        # before entities so:
+        entity_list = self.noun_list[:]
+        noun_list = self.entity_list[:]
+        entity_list.extend(noun_list)
+
+        entity_amount = len(entity_list)
+        sentence_amount = self.sentence_amount
+
+        # initialize original_grid
+        for sentence_index in range(sentence_amount):
+            original_grid.append([])
+            for entity_index in range(entity_amount):
+                original_grid[sentence_index].append('-')
+
+        # fill in the original_grid
+        entity_index = 0
+        for entity in entity_list:
+            for mention in entity.mention_list:
+                sentence_index = mention.sentence_index
+                original_grid[sentence_index][entity_index] = 'X'
+            entity_index = entity_index + 1
+                
+
+        # debug: print original_grid *vertically*
+        #print "sentence_amount:\t%d" % self.sentence_amount
+        #print "entity_amount:\t%d" % (self.entity_amount + self.noun_amount)
+        #sentence_index = 0
+        #for sentence in original_grid:
+        #    print "sentence:%d\t" % sentence_index,
+        #    entity_index = 0
+        #    for entity in sentence:
+        #        print entity,
+        #        entity_index = entity_index + 1
+        #    sentence_index = sentence_index + 1
+        #    print
+                
+        self.original_grid = original_grid
+        
+    def shuffle_grid(self):
+        '''
+        shuffle original grid into 20 random permutations -> shuffle_grid_list[]
+        '''
+        shuffle_grid_list = []
+        
+        for i in range(20):
+            shuffle_grid = copy.deepcopy(self.original_grid)
+            random.shuffle(shuffle_grid)
+            shuffle_grid_list.append(shuffle_grid)
+
+        # debug: print original grid *vertically*
+        #print "---------- original_grid ----------"
+        #sentence_index = 0
+        #for sentence in self.original_grid:
+        #    print "sentence: %d\t" % sentence_index,
+        #    entity_index = 0
+        #    for entity in sentence:
+        #        print entity,
+        #        entity_index = entity_index + 1
+        #    sentence_index = sentence_index + 1
+        #    print
+
+        # debug: print all shuffled grids *vertically*
+        #shuffle_index = 0
+        #for shuffle_grid in shuffle_grid_list:
+        #    print "---------- shuffle_grid %d ----------" % (shuffle_index)
+        #    sentence_index = 0
+        #    for sentence in shuffle_grid:
+        #        print "sentence: %d\t" % sentence_index,
+        #        entity_index = 0
+        #        for entity in sentence:
+        #            print entity,
+        #            entity_index = entity_index + 1
+        #        sentence_index = sentence_index + 1
+        #        print
+        #    shuffle_index = shuffle_index + 1
+        
+        self.shuffle_grid_list = shuffle_grid_list
+
     def print_grid(self):
         '''
         generate and print grid for this discourse
+        under construction
         '''
-        for noun in self.noun_list:
-            print noun.identity,
-            sentence_index = 0
-            for sentence_index in range(self.sentence_amount):
-                record = '-'
-                for mention in noun.mention_list:
-                    if mention.sentence_index == sentence_index:
-                        record = 'X'
-                print record,
-            print
-
-        for entity in self.entity_list:
-            print "(%d)" % entity.identity,
-            sentence_index = 0
-            for sentence_index in range(self.sentence_amount):
-                record = '-'
-                for mention in entity.mention_list:
-                    if mention.sentence_index == sentence_index:
-                        record = 'X'
-                print record,
-            print
-
-        # debug: comment for myzhang 
-        print "------------------------------ 残忍的分割线 ------------------------------"
-        print 
-        print "在上面的表格中，以数字为标注的实体都是共指实体，这些实体的每次mention我在下面给您列出:"
-        print
-        print "------------------------------ 残忍的分割线 ------------------------------"
-        for entity in discourse.entity_list:
-            print "entity (%d) -----------------------" % entity.identity
-            mention_index = 0
-            for mention in entity.mention_list:
-                print "    mention %d\t%d\t" % (mention_index, mention.entity_identity),
-                index_begin = mention.token_index_begin
-                index_end = mention.token_index_end
-                sentence = self.sentence_list[mention.sentence_index]
-                token_list = sentence.token_list[index_begin:index_end]
-                for token in token_list:
-                    print token.word_itself,
-                print
-                mention_index = mention_index + 1
 
 class Sentence(object):
     '''
@@ -652,7 +702,9 @@ if __name__ == "__main__":
 
     for discourse in discourse_list:
         discourse.group_noun()
-        discourse.print_grid()
+        discourse.generate_grid()
+        discourse.shuffle_grid()
+        
 
     if args.all_noun:
         pass
