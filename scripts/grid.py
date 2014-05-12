@@ -10,8 +10,9 @@ from the corresponding xxx_conll file
 """
 
 import sys
-import argparse
+import os
 import re
+import argparse
 import itertools
 import copy
 import random
@@ -250,6 +251,56 @@ class Discourse(object):
         generate and print grid for this discourse
         under construction
         '''
+        sentence_list = self.sentence_list
+        original_grid = self.original_grid
+        shuffle_grid_list = self.shuffle_grid_list
+        
+        # some tric here
+        # I just want nouns appear
+        # before entities so:
+        entity_list = self.noun_list[:]
+        noun_list = self.entity_list[:]
+        entity_list.extend(noun_list)
+        noun_range = self.noun_amount
+
+        entity_amount = len(entity_list)
+        sentence_amount = self.sentence_amount
+
+        # print original grid
+        file_name = "%s.perm-%d-parsed.grid" % (self.identity.replace('/', '-'), 1)
+        with open(file_name, 'w') as file:
+            for entity_index in range(entity_amount):
+                s_index = entity_list[entity_index].mention_list[0].sentence_index
+                t_index = entity_list[entity_index].mention_list[0].token_index_begin
+                sentence = sentence_list[s_index]
+
+                if entity_index <= noun_range:
+                    file.write("%s\t" % sentence.token_list[t_index].word_itself)
+                else:
+                    file.write("(%d)\t" % entity_list[entity_index].identity)
+                for sentence_index in range(sentence_amount):
+                    file.write("%s " % original_grid[sentence_index][entity_index])
+                file.write("\n")
+
+        # print shuffled permuitation grids
+        shuffle_index = 0
+        for shuffle_grid in shuffle_grid_list:
+            file_name = "%s.perm-%d-parsed.grid" % (self.identity.replace('/', '-'), shuffle_index + 2)
+            with open(file_name, 'w') as file:
+                for entity_index in range(entity_amount):
+                    s_index = entity_list[entity_index].mention_list[0].sentence_index
+                    t_index = entity_list[entity_index].mention_list[0].token_index_begin
+                    sentence = sentence_list[s_index]
+
+                    if entity_index <= noun_range:
+                        file.write("%s\t" % sentence.token_list[t_index].word_itself)
+                    else:
+                        file.write("(%d)\t" % entity_list[entity_index].identity)
+                    for sentence_index in range(sentence_amount):
+                        file.write("%s " % shuffle_grid[sentence_index][entity_index])
+                    file.write("\n")
+            shuffle_index = shuffle_index + 1
+            
 
 class Sentence(object):
     '''
@@ -704,6 +755,7 @@ if __name__ == "__main__":
         discourse.group_noun()
         discourse.generate_grid()
         discourse.shuffle_grid()
+        discourse.print_grid()
         
 
     if args.all_noun:
