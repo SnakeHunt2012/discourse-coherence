@@ -246,7 +246,7 @@ class Discourse(object):
         
         self.shuffle_grid_list = shuffle_grid_list
 
-    def print_grid(self):
+    def print_grid(self, target_dir):
         '''
         generate and print grid for this discourse
         under construction
@@ -267,7 +267,7 @@ class Discourse(object):
         sentence_amount = self.sentence_amount
 
         # print original grid
-        file_name = "%s.perm-%d-parsed.grid" % (self.identity.replace('/', '-'), 1)
+        file_name = "%s/%s.perm-%d-parsed.grid" % (target_dir.rstrip('/'), self.identity.replace('/', '-'), 1)
         with open(file_name, 'w') as file:
             for entity_index in range(entity_amount):
                 s_index = entity_list[entity_index].mention_list[0].sentence_index
@@ -275,9 +275,33 @@ class Discourse(object):
                 sentence = sentence_list[s_index]
 
                 if entity_index <= noun_range:
-                    file.write("%s\t" % sentence.token_list[t_index].word_itself)
+                    # noun
+                    file.write("%s " % sentence.token_list[t_index].word_itself)
                 else:
-                    file.write("(%d)\t" % entity_list[entity_index].identity)
+                    # entity
+                    
+                    entity_current = entity_list[entity_index]
+                    mention_longest_index = 0
+                    mention_longest = entity_current.mention_list[0]
+                    mention_longest_length = mention_longest.token_index_end - mention_longest.token_index_begin
+                    
+                    mention_current_index = 0
+                    for mention in entity_current.mention_list:
+                        mention_length = mention.token_index_end - mention.token_index_begin
+                        if mention_length > mention_longest:
+                            mention_longest = mention
+                            mention_longest_length = mention_length
+                            mention_longest_index = mention_current_index
+                        mention_current_index = mention_current_index + 1
+                        
+                    sentence_index = mention_longest.sentence_index
+                    token_index_begin = mention_longest.token_index_begin
+                    token_index_end = mention_longest.token_index_end
+                    token_list = self.sentence_list[sentence_index].token_list[token_index_begin:token_index_end]
+
+                    for token in token_list:
+                        file.write("%s-" % token.word_itself)
+                    file.write(" ")
                 for sentence_index in range(sentence_amount):
                     file.write("%s " % original_grid[sentence_index][entity_index])
                 file.write("\n")
@@ -285,7 +309,7 @@ class Discourse(object):
         # print shuffled permuitation grids
         shuffle_index = 0
         for shuffle_grid in shuffle_grid_list:
-            file_name = "%s.perm-%d-parsed.grid" % (self.identity.replace('/', '-'), shuffle_index + 2)
+            file_name = "%s/%s.perm-%d-parsed.grid" % (target_dir.rstrip('/'), self.identity.replace('/', '-'), shuffle_index + 2)
             with open(file_name, 'w') as file:
                 for entity_index in range(entity_amount):
                     s_index = entity_list[entity_index].mention_list[0].sentence_index
@@ -293,14 +317,43 @@ class Discourse(object):
                     sentence = sentence_list[s_index]
 
                     if entity_index <= noun_range:
+                        # noun
                         file.write("%s\t" % sentence.token_list[t_index].word_itself)
                     else:
-                        file.write("(%d)\t" % entity_list[entity_index].identity)
+                        # entity
+                        entity_current = entity_list[entity_index]
+                        mention_longest_index = 0
+                        mention_longest = entity_current.mention_list[0]
+                        mention_longest_length = mention_longest.token_index_end - mention_longest.token_index_begin
+                        
+                        mention_current_index = 0
+                        for mention in entity_current.mention_list:
+                            mention_length = mention.token_index_end - mention.token_index_begin
+                            if mention_length > mention_longest:
+                                mention_longest = mention
+                                mention_longest_length = mention_length
+                                mention_longest_index = mention_current_index
+                            mention_current_index = mention_current_index + 1
+                            
+                        sentence_index = mention_longest.sentence_index
+                        token_index_begin = mention_longest.token_index_begin
+                        token_index_end = mention_longest.token_index_end
+                        token_list = self.sentence_list[sentence_index].token_list[token_index_begin:token_index_end]
+    
+                        for token in token_list:
+                            file.write("%s-" % token.word_itself)
+                        file.write(" ")
+                        
                     for sentence_index in range(sentence_amount):
                         file.write("%s " % shuffle_grid[sentence_index][entity_index])
                     file.write("\n")
             shuffle_index = shuffle_index + 1
-            
+
+        # print discourse in raw text format for jhji
+        #for sentence in self.sentence_list:
+        #    for token in sentence.token_list:
+        #        print token.word_itself,
+        #    print 
 
 class Sentence(object):
     '''
@@ -719,6 +772,10 @@ if __name__ == "__main__":
     parser.add_argument("conll_file", type = str,
                         help = "print the entity grid from the xxx_conll file you type here")
 
+    # add argument: target_dir
+    parser.add_argument("target_dir", type = str,
+                        help = "specify the dir to which we put the grids in")
+    
     # add option: --all-noun
     group.add_argument("-n", "--all-noun", action = "store_true",
                        help = "use all nouns as the entities without coreference resolution")
@@ -755,7 +812,7 @@ if __name__ == "__main__":
         discourse.group_noun()
         discourse.generate_grid()
         discourse.shuffle_grid()
-        discourse.print_grid()
+        discourse.print_grid(args.target_dir)
         
 
     if args.all_noun:
