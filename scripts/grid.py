@@ -51,7 +51,11 @@ class Discourse(object):
                 entity_flag = 0
                 if token.part_of_speech == "NN":
                     entity_flag = 1
-                if token.part_of_speech == "NR":
+                if token.part_of_speech == "NNS":
+                    entity_flag = 1
+                if token.part_of_speech == "NNP":
+                    entity_flag = 1
+                if token.part_of_speech == "NNPS":
                     entity_flag = 1
                 for operator in token.resolute_operator_list:
                     if operator.operation == 2:
