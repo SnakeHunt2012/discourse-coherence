@@ -16,6 +16,7 @@ import argparse
 import itertools
 import copy
 import random
+from py4j.java_gateway import JavaGateway
 
 class Discourse(object):
     '''
@@ -33,6 +34,37 @@ class Discourse(object):
         self.noun_list = [] # list of entities without coreference in this discourse
         self.original_grid = [] # matrix (list of list of char)
         self.shuffle_grid_list = [] # matrix (list of list of list of char)
+        self.co_occurrence_amount = 0 # number of adjacent sentence pires which share at least one noun or entity
+
+    def processDepency(self):
+        gateway = JavaGateway()
+        dependency = gateway.entry_point
+        
+        for sentence in self.sentence_list:
+            #获取句子内容
+            sentContent = ''
+            dependencyResult = ''
+            for token in sentence.token_list:
+                sentContent = sentContent + token.word_itself+' '
+
+            # debug: print sentContent
+            #print sentContent
+                
+            #对句子内容进行依存分析
+            dependencyResult = dependency.getDependency(sentContent)
+            lists = dependencyResult.split(';')
+            
+            subjectAndIndex = lists[0].split(':')
+            objectAndIndex  = lists[1].split(':')
+            
+
+            for subjectIndex in subjectAndIndex:
+                if( int(subjectIndex) != -1 ):
+                    sentence.token_list[ int(subjectIndex) ].syntactic_role = 'S'
+                    
+            for objectIndex in objectAndIndex:
+                if( int(objectIndex) != -1 ):
+                    sentence.token_list[ int(objectIndex) ].syntactic_role = 'O'
 
     def group_noun(self):
         '''
@@ -190,8 +222,25 @@ class Discourse(object):
         entity_index = 0
         for entity in entity_list:
             for mention in entity.mention_list:
+                # judge 'X' or 'O' or 'S'
+                is_X = 0
+                is_O = 0
+                is_S = 0
+                sentence = self.sentence_list[mention.sentence_index]
+                token_list = sentence.token_list[mention.token_index_begin:mention.token_index_end]
+                for token in token_list:
+                    if token.syntactic_role == 'O':
+                        is_O = 1
+                    elif token.syntactic_role == 'S':
+                        is_S = 1
+                # fill in entry
                 sentence_index = mention.sentence_index
-                original_grid[sentence_index][entity_index] = 'X'
+                if is_S == 1:
+                    original_grid[sentence_index][entity_index] = 'S'
+                elif is_O == 1:
+                    original_grid[sentence_index][entity_index] = 'O'
+                else:
+                    original_grid[sentence_index][entity_index] = 'X'
             entity_index = entity_index + 1
                 
 
@@ -215,11 +264,17 @@ class Discourse(object):
         shuffle original grid into 20 random permutations -> shuffle_grid_list[]
         '''
         shuffle_grid_list = []
-        
-        for i in range(20):
-            shuffle_grid = copy.deepcopy(self.original_grid)
-            random.shuffle(shuffle_grid)
-            shuffle_grid_list.append(shuffle_grid)
+
+
+        if len(self.original_grid) < 4:
+            for shuffle_grid in itertools.permutations(self.original_grid):
+                shuffle_grid_list.append(list(shuffle_grid))
+            shuffle_grid_list.pop()
+        else:
+            for i in range(20):
+                shuffle_grid = copy.deepcopy(self.original_grid)
+                random.shuffle(shuffle_grid)
+                shuffle_grid_list.append(shuffle_grid)
 
         # debug: print original grid *vertically*
         #print "---------- original_grid ----------"
@@ -283,7 +338,6 @@ class Discourse(object):
                     file.write("%s " % sentence.token_list[t_index].word_itself)
                 else:
                     # entity
-                    
                     entity_current = entity_list[entity_index]
                     mention_longest_index = 0
                     mention_longest = entity_current.mention_list[0]
@@ -357,7 +411,322 @@ class Discourse(object):
         #for sentence in self.sentence_list:
         #    for token in sentence.token_list:
         #        print token.word_itself,
-        #    print 
+        #    print
+
+    def print_benchmark_grid(self, target_dir):
+        '''
+        print grids for benchmark
+        1. NN
+        2. NNS
+        3. NNP
+        4. NNPs
+        5. (entity.identity) 
+        '''
+        sentence_list = self.sentence_list
+        original_grid = self.original_grid
+        shuffle_grid_list = self.shuffle_grid_list
+        
+        # some tric here
+        # I just want nouns appear
+        # before entities so:
+        entity_list = self.noun_list[:]
+        noun_list = self.entity_list[:]
+        entity_list.extend(noun_list)
+        noun_range = self.noun_amount
+
+        entity_amount = len(entity_list)
+        sentence_amount = self.sentence_amount
+
+        # print original grid
+        file_name = "%s/%s.perm-%d-parsed.grid" % (target_dir.rstrip('/'), self.identity.replace('/', '-'), 1)
+        with open(file_name, 'w') as file:
+            for entity_index in range(entity_amount):
+                s_index = entity_list[entity_index].mention_list[0].sentence_index
+                t_index = entity_list[entity_index].mention_list[0].token_index_begin
+                sentence = sentence_list[s_index]
+
+                if entity_index <= noun_range:
+                    # noun
+                    file.write("%s " % sentence.token_list[t_index].word_itself)
+                else:
+                    # entity
+                    entity_current = entity_list[entity_index]
+                    file.write("(%d) " % entity_current.identity)
+                for sentence_index in range(sentence_amount):
+                    file.write("%s " % original_grid[sentence_index][entity_index])
+                file.write("\n")
+
+        # print shuffled permuitation grids
+        shuffle_index = 0
+        for shuffle_grid in shuffle_grid_list:
+            file_name = "%s/%s.perm-%d-parsed.grid" % (target_dir.rstrip('/'), self.identity.replace('/', '-'), shuffle_index + 2)
+            with open(file_name, 'w') as file:
+                for entity_index in range(entity_amount):
+                    s_index = entity_list[entity_index].mention_list[0].sentence_index
+                    t_index = entity_list[entity_index].mention_list[0].token_index_begin
+                    sentence = sentence_list[s_index]
+
+                    if entity_index <= noun_range:
+                        # noun
+                        file.write("%s\t" % sentence.token_list[t_index].word_itself)
+                    else:
+                        # entity
+                        entity_current = entity_list[entity_index]
+                        file.write("(%d) " % entity_current.identity)
+                        
+                    for sentence_index in range(sentence_amount):
+                        file.write("%s " % shuffle_grid[sentence_index][entity_index])
+                    file.write("\n")
+            shuffle_index = shuffle_index + 1
+
+        # print discourse in raw text format for jhji
+        #for sentence in self.sentence_list:
+        #    for token in sentence.token_list:
+        #        print token.word_itself,
+        #    print
+    
+    def print_graph_grid(self, target_dir):
+        '''
+        print grids for generating graph:
+        1. NNP
+        2. NNPS
+        3. entity.mention which has the shortest length with at least one NNP or NNPs in it
+        '''
+        sentence_list = self.sentence_list
+        original_grid = self.original_grid
+        shuffle_grid_list = self.shuffle_grid_list
+        
+        # some tric here
+        # I just want nouns appear
+        # before entities so:
+        entity_list = self.noun_list[:]
+        noun_list = self.entity_list[:]
+        entity_list.extend(noun_list)
+        noun_range = self.noun_amount
+
+        entity_amount = len(entity_list)
+        sentence_amount = self.sentence_amount
+
+        # print entity list for myzhang
+        file_name = "%s/%s.perm-%d-parsed.entity" % (target_dir.rstrip('/'), self.identity.replace('/', '-'), 1)
+        with open(file_name, 'w') as file:
+            for entity_index in range(noun_range, entity_amount):
+                entity_current = entity_list[entity_index]
+                file.write("---------- %d ----------\n" % entity_current.identity)
+                for mention in entity_current.mention_list:
+                    sentence = self.sentence_list[mention.sentence_index]
+                    token_index_begin = mention.token_index_begin
+                    token_index_end = mention.token_index_end
+                    token_list = sentence.token_list[token_index_begin:token_index_end]
+                    for token in token_list:
+                        file.write("%s " % token.word_itself)
+                    file.write("\n")
+                file.write("\n")
+
+        # print original grid
+        file_name = "%s/%s.perm-%d-parsed.grid" % (target_dir.rstrip('/'), self.identity.replace('/', '-'), 1)
+        with open(file_name, 'w') as file:
+            for entity_index in range(entity_amount):
+                s_index = entity_list[entity_index].mention_list[0].sentence_index
+                t_index = entity_list[entity_index].mention_list[0].token_index_begin
+                sentence = sentence_list[s_index]
+
+                if entity_index <= noun_range:
+                    # noun
+                    if not (sentence.token_list[t_index].part_of_speech == "NNP" or sentence.token_list[t_index].part_of_speech == "NNPS"):
+                        continue
+                    file.write("%s " % sentence.token_list[t_index].word_itself)
+                else:
+                    # entity
+                    entity_current = entity_list[entity_index]
+                    mention_list = entity_current.mention_list
+
+                    NNP_count_list = [0 for mention in mention_list]
+                    for mention_index in range(len(mention_list)):
+                        mention_current = mention_list[mention_index]
+                        sentence_index = mention_current.sentence_index
+                        token_index_begin = mention_current.token_index_begin
+                        token_index_end = mention_current.token_index_end
+                        token_list = self.sentence_list[sentence_index].token_list[token_index_begin:token_index_end]
+
+                        NNP_count = 0
+                        for token in token_list:
+                            if (token.part_of_speech == "NNP") or (token.part_of_speech == "NNPS"):
+                                NNP_count = NNP_count + 1
+
+                        NNP_count_list[mention_index] = NNP_count
+
+                    mention_selected_flag = 0
+                    mention_selected_index = 0
+                    mention_selected = None
+
+                    for mention_index in range(len(NNP_count_list)):
+                        if NNP_count_list[mention_index] > 0:
+                            mention_selected_flag = 1
+                            mention_selected_index = mention_index
+                            break
+
+                    if mention_selected_flag == 0:
+                        continue
+
+                    for mention_index in range(len(NNP_count_list)):
+                        if (NNP_count_list[mention_index] > 0) and (NNP_count_list[mention_index] < NNP_count_list[mention_selected_index]):
+                            mention_selected_index = mention_index
+
+                    mention_selected = mention_list[mention_selected_index]
+                    sentence_index = mention_selected.sentence_index
+                    token_index_begin = mention_selected.token_index_begin
+                    token_index_end = mention_selected.token_index_end
+                    token_list = self.sentence_list[sentence_index].token_list[token_index_begin:token_index_end]                                            
+
+                    for token in token_list:
+                        file.write("%s-" % token.word_itself)
+                    file.write(" ")
+                for sentence_index in range(sentence_amount):
+                    file.write("%s " % original_grid[sentence_index][entity_index])
+                file.write("\n")
+
+        # print shuffled permuitation grids
+        shuffle_index = 0
+        for shuffle_grid in shuffle_grid_list:
+            file_name = "%s/%s.perm-%d-parsed.grid" % (target_dir.rstrip('/'), self.identity.replace('/', '-'), shuffle_index + 2)
+            with open(file_name, 'w') as file:
+                for entity_index in range(entity_amount):
+                    s_index = entity_list[entity_index].mention_list[0].sentence_index
+                    t_index = entity_list[entity_index].mention_list[0].token_index_begin
+                    sentence = sentence_list[s_index]
+
+                    if entity_index <= noun_range:
+                        # noun
+                        if not (sentence.token_list[t_index].part_of_speech == 'NNP' or sentence.token_list[t_index].part_of_speech == 'NNPS'):
+                            continue
+                        file.write("%s\t" % sentence.token_list[t_index].word_itself)
+                    else:
+                        # entity
+                        entity_current = entity_list[entity_index]
+                        mention_list = entity_current.mention_list
+
+                        NNP_count_list = [0 for mention in mention_list]
+                        for mention_index in range(len(mention_list)):
+                            mention_current = mention_list[mention_index]
+                            sentence_index = mention_current.sentence_index
+                            token_index_begin = mention_current.token_index_begin
+                            token_index_end = mention_current.token_index_end
+                            token_list = self.sentence_list[sentence_index].token_list[token_index_begin:token_index_end]
+
+                            NNP_count = 0
+                            for token in token_list:
+                                if (token.part_of_speech == "NNP") or (token.part_of_speech == "NNPS"):
+                                    NNP_count = NNP_count + 1
+
+                            NNP_count_list[mention_index] = NNP_count
+
+                        mention_selected_flag = 0
+                        mention_selected_index = 0
+                        mention_selected = None
+
+                        for mention_index in range(len(NNP_count_list)):
+                            if NNP_count_list[mention_index] > 0:
+                                mention_selected_flag = 1
+                                mention_selected_index = mention_index
+                                break
+
+                        if mention_selected_flag == 0:
+                            continue
+
+                        for mention_index in range(len(NNP_count_list)):
+                            if (NNP_count_list[mention_index] > 0) and (NNP_count_list[mention_index] < NNP_count_list[mention_selected_index]):
+                                mention_selected_index = mention_index
+
+                        mention_selected = mention_list[mention_selected_index]
+                        sentence_index = mention_selected.sentence_index
+                        token_index_begin = mention_selected.token_index_begin
+                        token_index_end = mention_selected.token_index_end
+                        token_list = self.sentence_list[sentence_index].token_list[token_index_begin:token_index_end]                                            
+    
+                        for token in token_list:
+                            file.write("%s-" % token.word_itself)
+                        file.write(" ")
+                        
+                    for sentence_index in range(sentence_amount):
+                        file.write("%s " % shuffle_grid[sentence_index][entity_index])
+                    file.write("\n")
+            shuffle_index = shuffle_index + 1
+
+        # print discourse in raw text format for jhji
+        #for sentence in self.sentence_list:
+        #    for token in sentence.token_list:
+        #        print token.word_itself,
+        #    print
+
+    def count_co_occurrence_U(self):
+        '''
+        count number of pires of adjacent sentences
+        who share at least one noun or entity, this
+        would be a percentage which is computed by
+        co-occurrence_count/(self.sentence_amount + 1)
+        '''
+        # some tric here
+        # I just want nouns appear
+        # before entities so:
+        entity_list = self.noun_list[:]
+        noun_list = self.entity_list[:]
+        entity_list.extend(noun_list)
+
+        co_occurrence_list = [0 for sentence in self.sentence_list]
+        for entity in entity_list:
+            co_occurrence_record = [0 for sentence in self.sentence_list]
+            for mention in entity.mention_list:
+                co_occurrence_record[mention.sentence_index] = 1
+            for record_index in range(len(co_occurrence_record) - 1):
+                record_index_front = record_index
+                record_index_rear = record_index + 1
+                if co_occurrence_record[record_index_front] == 1 and co_occurrence_record[record_index_rear] == 1:
+                    co_occurrence_list[record_index] = 1
+        # debug: print co_occurrence_list
+        count = 0
+        for co_occurrence in co_occurrence_list:
+            count = count + co_occurrence
+        print "%d,%d" % (self.sentence_amount - 1, count)
+        #print "\t%d/%d|\t" % (count, self.sentence_amount - 1),
+        #for co_occurrence in co_occurrence_list:
+        #    print co_occurrence,
+        #print
+        
+    def count_co_occurrence_W(self):
+        '''
+        '''
+        # some tric here
+        # I just want nouns appear
+        # before entities so:
+        entity_list = self.noun_list[:]
+        noun_list = self.entity_list[:]
+        entity_list.extend(noun_list)
+
+        co_occurrence_list = [0 for sentence in self.sentence_list]
+        for entity in entity_list:
+            co_occurrence_record = [0 for sentence in self.sentence_list]
+            for mention in entity.mention_list:
+                co_occurrence_record[mention.sentence_index] = 1
+            for record_index in range(len(co_occurrence_record) - 1):
+                record_index_front = record_index
+                record_index_rear = record_index + 1
+                if co_occurrence_record[record_index_front] == 1 and co_occurrence_record[record_index_rear] == 1:
+                    co_occurrence_list[record_index] = co_occurrence_list[record_index] + 1
+        # debug: print co_occurrence_list
+        count = 0
+        for co_occurrence in co_occurrence_list:
+            count = count + co_occurrence
+        print "%d,%d" % (self.sentence_amount - 1, count)
+        #print "\t%d/%d|\t" % (count, self.sentence_amount - 1),
+        #for co_occurrence in co_occurrence_list:
+        #    print co_occurrence,
+        #print
+
+    def count_co_occurrence_Acc(self):
+        '''
+        under construction
+        '''
 
 class Sentence(object):
     '''
@@ -502,7 +871,6 @@ def parse_conll(file_in):
     '''
     parse _conll file and extract the Discourse objects inside
     return a list of Discourse objects
-    --under construction--
     '''
 
     # open _conll file
@@ -780,6 +1148,14 @@ if __name__ == "__main__":
     parser.add_argument("target_dir", type = str,
                         help = "specify the dir to which we put the grids in")
     
+    # add option: --benchmark
+    group.add_argument("-b", "--benchmark", action = "store_true",
+                       help = "generate grids for benchmark")
+    
+    # add option: --graph
+    group.add_argument("-g", "--graph", action = "store_true",
+                       help = "generate grids for graph")
+    
     # add option: --all-noun
     group.add_argument("-n", "--all-noun", action = "store_true",
                        help = "use all nouns as the entities without coreference resolution")
@@ -788,40 +1164,67 @@ if __name__ == "__main__":
     group.add_argument("-p", "--np-noun", action = "store_true",
                        help = "use coreferenced resoluted (nouns and NPs) as the entities, i.e. resoluted( resoluted({nouns}) + resoluted({NPs}) )")
 
+    # add option: --co-occurrence-U
+    group.add_argument("-U", "--co-occurrence-U", action = "store_true",
+                       help = "count number of pires of adjacent sentences who share at least one noun or entity, this shall be a percentage which is computed by method U")
+
+    # add option: --co-occurrence-W
+    group.add_argument("-W", "--co-occurrence-W", action = "store_true",
+                       help = "count number of pires of adjacent sentences who share at least one noun or entity, this shall be a percentage which is computed by method W")
+
+    # add option: --co-occurrence-Acc
+    group.add_argument("-A", "--co-occurrence-Acc", action = "store_true",
+                       help = "count number of pires of adjacent sentences who share at least one noun or entity, this shall be a percentage which is computed by method Acc")
+        
     # parse conll and generate discourses(discourse_list[])
     args = parser.parse_args()
     discourse_list = parse_conll(args.conll_file)
-    for discourse in discourse_list:
-        discourse.group_mention()
 
-    # debug: print all entity and its mentions in the discourse
-    #discourse = discourse_list[0]
-    #entity_index = 0
-    #for entity in discourse.entity_list:
-    #    print "entity %d -----------------------" % entity.identity
-    #    mention_index = 0
-    #    for mention in entity.mention_list:
-    #        print "    mention %d\t%d\t" % (mention_index, mention.entity_identity),
-    #        index_begin = mention.token_index_begin
-    #        index_end = mention.token_index_end
-    #        sentence = discourse.sentence_list[mention.sentence_index]
-    #        token_list = sentence.token_list[index_begin:index_end]
-    #        for token in token_list:
-    #            print token.word_itself,
-    #        print
-    #        mention_index = mention_index + 1
-    #    entity_index = entity_index + 1
-
-    for discourse in discourse_list:
-        discourse.group_noun()
-        discourse.generate_grid()
-        discourse.shuffle_grid()
-        discourse.print_grid(args.target_dir)
+    # whole uasge:
+    #for discourse in discourse_list:
+    #    discourse.processDepency()
+    #    discourse.group_mention()
+    #    discourse.group_noun()
+    #    discourse.generate_grid()
+    #    discourse.shuffle_grid()
+    #    discourse.print_grid(args.target_dir)
         
 
     if args.all_noun:
         pass
     elif args.np_noun:
         pass
+    elif args.co_occurrence_U:
+        for discourse in discourse_list:
+            discourse.group_mention()
+            discourse.group_noun()
+            discourse.count_co_occurrence_U()
+    elif args.co_occurrence_W:
+        for discourse in discourse_list:
+            discourse.group_mention()
+            discourse.group_noun()
+            discourse.count_co_occurrence_W()
+    elif args.co_occurrence_Acc:
+        for discourse in discourse_list:
+            discourse.processDepency()
+            discourse.group_mention()
+            discourse.group_noun()
+            discourse.count_co_occurrence_Acc()
+    elif args.benchmark:
+        for discourse in discourse_list:
+            discourse.processDepency()
+            discourse.group_mention()
+            discourse.group_noun()
+            discourse.generate_grid()
+            discourse.shuffle_grid()
+            discourse.print_benchmark_grid(args.target_dir)
+    elif args.graph:
+        for discourse in discourse_list:
+            discourse.processDepency()
+            discourse.group_mention()
+            discourse.group_noun()
+            discourse.generate_grid()
+            discourse.shuffle_grid()
+            discourse.print_graph_grid(args.target_dir)
     else:
         pass

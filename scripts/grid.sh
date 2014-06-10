@@ -10,7 +10,7 @@ do
     echo "part: ${part}: -------------------"
     for conll in $(ls ${sampling_dir}/${part})
     do
-	python $pyscript_path ${sampling_dir}/${part}/${conll} ${sampling_dir}/${part}
+	python $pyscript_path --benchmark ${sampling_dir}/${part}/${conll} ${sampling_dir}/${part}
     done
 done
 

@@ -3,83 +3,39 @@
 
 # Generate testing result from data[(1)|(2)]_[(train)|(test)]_grid_file.list.
 #
-# The result output:
-# 1. Accuracy at data1_train
-# 2. Accuracy at data1_test
-# 3. Accuracy at data2_train
-# 4. Accuracy at data2_test
-# 5. Accuracy at data set 1 (e.t. data1_train + data1_test)
-# 6. Accuracy at data set 2 (e.t. data2_train + data2_test)
-# 7. Accuracy at whole data (data1_train + data1_test + data2_train + data2_test)
+# This script output:
+# 1. Accuracy(stdout)
+# 2. accuracy-entity.pdf
+# 3. accuracy-sentence.pdf
 
+# dirs
 work_dir=$(pwd)
-clean_dir="${work_dir}/../result/clean-data"
-analyse_dir="${work_dir}/../result/analyse-data"
+result_dir="${work_dir}/../result"
 csv_dir="${work_dir}/../csv"
+U_dir="${csv_dir}/P-U"
+w_dir="${csv_dir}/P-W"
+Acc_dir="${csv_dir}/P-Acc"
 
-list_clean_1="${clean_dir}/data1-train-clean.list"
-list_clean_2="${clean_dir}/data1-test-clean.list"
-list_clean_3="${clean_dir}/data2-train-clean.list"
-list_clean_4="${clean_dir}/data2-test-clean.list"
+# paths
+pyscript_path="${work_dir}/analyse.py"
+rscript_path="${work_dir}/analyse.R"
+list_path="${result_dir}/result.list"
+csv_sentence_path="${U_dir}/sentence-accuracy.csv"
+csv_entity_path="${U_dir}/entity-accuracy.csv"
 
-list_data1="${clean_dir}/data1-whole.list"
-list_data2="${clean_dir}/data2-whole.list"
-list_data_whole="${clean_dir}/data-whole.list"
+# create or clean
+touch $csv_sentence_path
+touch $csv_entity_path
+: > $csv_sentence_path
+: > $csv_entity_path
 
-csv_permutation_data1="${csv_dir}/data1-permutation.csv"
-csv_permutation_data2="${csv_dir}/data2-permutation.csv"
-csv_entity_data1="${csv_dir}/data1-entity-accuracy.csv"
-csv_entity_data2="${csv_dir}/data2-entity-accuracy.csv"
-csv_sentence_data1="${csv_dir}/data1-sentence-accuracy.csv"
-csv_sentence_data2="${csv_dir}/data2-sentence-accuracy.csv"
+# print accuracy to stdout
+echo "Accuracy: $(python ${pyscript_path} -a ${list_path})"
 
-: > "$list_data1"
-: > "$list_data2"
-: > "$list_data_whole"
-
-# generate $list_data1
-cat "$list_clean_1" >> "$list_data1"
-cat "$list_clean_2" >> "$list_data1"
-
-# generate $list_data2
-cat "$list_clean_3" >> "$list_data2"
-cat "$list_clean_4" >> "$list_data2"
-
-# generate $list_data_whole
-cat "$list_clean_1" >> "$list_data_whole"
-cat "$list_clean_2" >> "$list_data_whole"
-cat "$list_clean_3" >> "$list_data_whole"
-cat "$list_clean_4" >> "$list_data_whole"
-
-# print result
-echo "Accuracy at data1_train: $(python ${work_dir}/analyse.py -a ${list_clean_1})"
-echo "Accuracy at data1_test: $(python ${work_dir}/analyse.py -a ${list_clean_2})"
-echo "Accuracy at data2_train: $(python ${work_dir}/analyse.py -a ${list_clean_3})"
-echo "Accuracy at data2_test: $(python ${work_dir}/analyse.py -a ${list_clean_4})"
-echo "Accuracy at data set 1: $(python ${work_dir}/analyse.py -a ${list_data1})"
-echo "Accuracy at data set 2: $(python ${work_dir}/analyse.py -a ${list_data2})"
-echo "Accuracy at whole data: $(python ${work_dir}/analyse.py -a ${list_data_whole})"
-
-# prepare data for R script
-: > $csv_permutation_data1
-: > $csv_permutation_data2
-: > $csv_entity_data1
-: > $csv_entity_data2
-: > $csv_sentence_data1
-: > $csv_sentence_data2
-
-python ${work_dir}/analyse.py --permutation-for-hist-gram ${list_data1} > \
-    $csv_permutation_data1
-python ${work_dir}/analyse.py --permutation-for-hist-gram ${list_data2} > \
-    $csv_permutation_data2
-python ${work_dir}/analyse.py --result-by-entity-amount ${list_data1} > \
-    $csv_entity_data1
-python ${work_dir}/analyse.py --result-by-entity-amount ${list_data2} > \
-    $csv_entity_data2
-python ${work_dir}/analyse.py --result-by-sentence-amount ${list_data1} > \
-    $csv_sentence_data1
-python ${work_dir}/analyse.py --result-by-sentence-amount ${list_data2} > \
-    $csv_sentence_data2
+# print accuracy to csv for analyse by R
+python ${pyscript_path} --result-by-sentence-amount ${list_path} > ${csv_sentence_path}
+python ${pyscript_path} --result-by-entity-amount ${list_path} > ${csv_entity_path}
 
 # draw pictures
-R CMD BATCH --vanilla -slave analyse.R 
+R CMD BATCH --vanilla analyse.R 
+

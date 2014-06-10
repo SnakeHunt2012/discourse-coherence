@@ -26,7 +26,7 @@ def grid_parse(in_file):
         if line.isspace():
             break
         line_rstripped = line.rstrip('\n')
-        word_list = line_rstripped.split(' ')
+        word_list = line_rstripped.split()
         pos_end = len(word_list)
         entity_name = word_list[0] # warning: using space to split a line may cause error
         entity_trace = word_list[1:pos_end]
@@ -92,7 +92,7 @@ def grid_to_graph(grid):
     # Version 1: the sentence "to" is the sentence later than "frm" just by one(adjacent to "frm")
     for i in range(num_of_sentences - 1):
         if connection_between_sentences(grid, i, i + 1):
-            tuples_frm_to_weights.append((i, i + 1, edge_weight_version_1(grid, i, i + 1)))
+            tuples_frm_to_weights.append((i, i + 1, edge_weight_version_3(grid, i, i + 1)))
     # Version 2: the sentence "to" is every sentence later than "frm"
     #for i in range(num_of_sentences - 1):
     #    for j in range(i + 1, num_of_sentences):
@@ -136,5 +136,16 @@ if __name__ == "__main__":
     args = sys.argv
 
     grid = grid_parse(args[1])
+    if len(grid[1].trace) == 1:
+        print "%f %d %d %f" % (0, len(grid), len(grid[0].trace), 0)
+        exit(0)
     graph = grid_to_graph(grid)
-    print "%f %d %d" % (avg_out_degree(graph), len(grid), len(grid[0].trace))
+    # share_rate (pair with co-entity / sentence_amount - 1)
+    sentence_amount = len(grid[0].trace)
+    share_amount = 0
+    for index in range(len(grid[0].trace) - 1):
+        if connection_between_sentences(grid, index, index + 1):
+            share_amount = share_amount + 1
+    share_rate = float(share_amount) / float(sentence_amount - 1)
+    # avg_out_degree, entity_amount, sentence_amount, share_rate
+    print "%f %d %d %f" % (avg_out_degree(graph), len(grid), len(grid[0].trace), share_rate) 

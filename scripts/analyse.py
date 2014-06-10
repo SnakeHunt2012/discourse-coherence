@@ -43,9 +43,9 @@ def parse_record_file(in_file):
         item_list = record_rstripped.split(' ')
 
         # check spliting result
-        if len(item_list) != 4:
+        if len(item_list) != 5:
             try:
-                raise InputError(record, "len(item_list) == %d" % len(len_list))
+                raise InputError(record, "len(item_list) == %d" % len(item_list))
             except InputError as e:
                 print "InputError occurred, msg:", e.msg
         
@@ -70,11 +70,15 @@ def parse_record_file(in_file):
         # parse sentence_amount
         sentence_amount = int(item_list[3])
 
+        # parse share_rate
+        share_rate = float(item_list[4])
+
         permutation_list.append(Permutation(permutation_id,
                                             discourse_id,
                                             entity_amount,
                                             sentence_amount,
-                                            avg_out_degree))
+                                            avg_out_degree,
+                                            share_rate))
         # debug: print detail for object Permutation
         #print "permutation_id:\t", type(permutation_id), permutation_id
         #print "discourse_id:\t", type(discourse_id), discourse_id
@@ -288,6 +292,80 @@ def count_discourse_by_sentence_amount(discourse_list):
         group_item_list.append(group_item)
         
     return group_item_list
+
+def hash_accuracy_0_50(discourse_list):
+    '''
+    hash discourse by sentence_amount into range:
+    [0-5,
+    5-10,
+    10-15,
+    15-20,
+    20-25,
+    25-30,
+    30-35,
+    35-40,
+    40-45,
+    45-50]
+    '''
+    hash_table = [[] for i in range(0, 10)]
+    accuracy_table = [0 for i in range(0, 10)]
+    
+    # hash discourse
+    for discourse in discourse_list:
+        index = int((discourse.sentence_amount - 1) / 5)
+        hash_table[index].append(discourse)
+
+    accuracy_table = []
+    # compute avg accuracy for each item in hash table
+    for table in hash_table:
+        n_positive = 0
+        n_negative = 0
+        for discourse in table:
+            n_positive = n_positive + discourse.positive
+            n_negative = n_negative + discourse.negative
+        accuracy_current = float(n_positive) / (float(n_negative) + float(n_positive))
+        accuracy_table.append(accuracy_current)
+
+
+    return hash_table, accuracy_table
+
+def hash_accuracy_5_50(discourse_list):
+    '''
+    hash discourse by sentence_amount into range:
+    [5-10,
+    10-15,
+    15-20,
+    20-25,
+    25-30,
+    30-35,
+    35-40,
+    40-45,
+    45-50]
+    '''
+    hash_table = [[] for i in range(0, 10)]
+    accuracy_table = [0 for i in range(0, 10)]
+    
+    # hash discourse
+    for discourse in discourse_list:
+        index = int((discourse.sentence_amount - 1) / 5)
+        hash_table[index].append(discourse)
+
+    accuracy_table = []
+    # compute avg accuracy for each item in hash table
+    for table in hash_table:
+        n_positive = 0
+        n_negative = 0
+        for discourse in table:
+            n_positive = n_positive + discourse.positive
+            n_negative = n_negative + discourse.negative
+        accuracy_current = float(n_positive) / (float(n_negative) + float(n_positive))
+        accuracy_table.append(accuracy_current)
+
+    # pop first range which is no-used
+    hash_table.pop(0)
+    accuracy_table.pop(0)
+
+    return hash_table, accuracy_table
     
 class Error(Exception):
     """ Base class for exceptions in this module."""
@@ -310,13 +388,15 @@ class Permutation(object):
                  discourse_id,
                  entity_amount,
                  sentence_amount,
-                 avg_out_degree):
+                 avg_out_degree,
+                 share_rate):
         "set permutation_id, discourse_id, avg_out_degree for this permutation"
         self.permutation_id = permutation_id   # shall be an int
         self.discourse_id = discourse_id       # shall be a string
         self.entity_amount = entity_amount     # shell be an int
         self.sentence_amount = sentence_amount # shell be an int
         self.avg_out_degree = avg_out_degree   # shall be a float
+        self.share_rate = share_rate           # shall be a float
 
 class Discourse(object):
     "Discourse Class"
@@ -329,6 +409,12 @@ class Discourse(object):
         self.range_rear = 0                      # shall be an int
         self.accuracy = 0                        # shall be a float
         self.permutation_list = permutation_list # shall be a list of class Permutation
+        self.positive = 0 # shall be a int
+        self.negative = 0 # shall be a int
+        self.share_rate = 0 # shall be a float
+        
+        #self.positive_amount = 0 # shell be an int
+        #self.negative_amount = 0 # shall be an int
         
         # compute self.permutation_amount
         self.permutation_amount = len(permutation_list)
@@ -339,6 +425,9 @@ class Discourse(object):
         self.range_front = 1
         self.range_rear = 1
         ori_permutation = permutation_list[0]
+        
+        # register share rate
+        self.share_rate = ori_permutation.share_rate
         for permutation in permutation_list:
             if permutation.permutation_id == 1:
                 continue
@@ -347,11 +436,21 @@ class Discourse(object):
             if permutation.avg_out_degree >= ori_permutation.avg_out_degree:
                 self.range_rear = self.range_rear + 1
 
-        # compute self.accuracy
-        range_avg = float(self.range_front) + float(self.range_rear) / 2
-        mu = float(self.permutation_amount) / 2
-        sigma = float(self.permutation_amount)
-        self.accuracy = ((self.permutation_amount - range_avg) - mu) / sigma
+        # old: compute self.accuracy
+        #range_avg = float(self.range_front) + float(self.range_rear) / 2
+        #mu = float(self.permutation_amount) / 2
+        #sigma = float(self.permutation_amount)
+        #self.accuracy = ((self.permutation_amount - range_avg) - mu) / sigma
+
+        # new: compute self.accuracy
+        self.negative = (self.range_front + self.range_rear) / 2
+        self.positive = self.permutation_amount - self.negative - 1
+        if self.permutation_amount == 1:
+            self.accuracy = float(0.5)
+        else:
+            self.accuracy = float(self.positive) / float(self.permutation_amount - 1)
+        
+
 
 class Group_Item(object):
     "item of list groups returned by funnction group_by_xxx()"
@@ -408,8 +507,23 @@ if __name__ == "__main__":
     # add option: --avg-sentence-amount
     group.add_argument("--avg-sentence-amount", action = "store_true",
                        help = "print average sentence amount in form [sentence_amount_avg discourse_amount]")
-    
 
+    # add option: --hash-accuracy-0-50
+    group.add_argument("--hash-accuracy-0-50", action = "store_true",
+                       help = "")
+
+    # add option: --hash-accuracy-5-50
+    group.add_argument("--hash-accuracy-5-50", action = "store_true",
+                       help = "")
+        
+    # add option: --discourse-list
+    group.add_argument("--discourse-list", action = "store_true",
+                       help = "print discourse detail for each discourse")
+
+    # add option: --discourse-csv
+    group.add_argument("--discourse-csv", action = "store_true",
+                       help = "print discourse detail for each discourse")
+    
     # parse args from command
     args = parser.parse_args()
     
@@ -523,6 +637,35 @@ if __name__ == "__main__":
             sentence_amount_total = sentence_amount_total + discourse.sentence_amount
         sentence_amount_avg = float(sentence_amount_total) / float(len(discourse_list))
         print "%f\t%d" % (sentence_amount_avg, len(discourse_list))
+    elif args.hash_accuracy_0_50:
+        hash_table, accuracy_list = hash_accuracy_0_50(discourse_list)
+        # debug: print all discourse and its length
+        #for table_index in range(len(hash_table)):
+        #    print "----- hash_index %d -----" % table_index
+        #    for discourse in hash_table[table_index]:
+        #        print "discourse_length: ", discourse.sentence_amount
+        for table_index in range(len(hash_table)):
+            print "%d,%f" % (table_index, accuracy_list[table_index])
+    elif args.hash_accuracy_5_50:
+        hash_table, accuracy_list = hash_accuracy_5_50(discourse_list)
+        # debug: print all discourse and its length
+        #for table_index in range(len(hash_table)):
+        #    print "----- hash_index %d -----" % table_index
+        #    for discourse in hash_table[table_index]:
+        #        print "discourse_length: ", discourse.sentence_amount
+        for table_index in range(len(hash_table)):
+            print "%d,%f" % (table_index, accuracy_list[table_index])
+    elif args.discourse_list:
+        #print "discourse_id,entity_amount,sentence_amount,positive_amount,negative_amount,share_rate"
+        for discourse in discourse_list:
+            print "%s %d %d %d %d %f" % (discourse.discourse_id,
+                                            discourse.entity_amount,
+                                            discourse.sentence_amount,
+                                            discourse.positive,
+                                            discourse.negative,
+                                            discourse.share_rate)
+    elif args.discourse_csv:
+        pass
     else:
         # impossible to go through this branch, so do noting
         pass
